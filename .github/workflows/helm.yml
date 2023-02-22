@@ -1,0 +1,41 @@
+name: Provisioning AWS
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-1                   # set this to your preferred AWS region, e.g. us-west-1
+
+jobs:
+  helm_packages:
+    name: Helm
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install awscliv2
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Configure AWS credentials
+        run: |
+          awsv2 --configure TERRAFORM_ACCESS ${{ secrets.AWS_ACCESS_KEY_ID_TERRAFORM }} ${{ secrets.AWS_SECRET_ACCESS_KEY_TERRAFORM }}
+          
+      - name: Install Helm
+        run: |
+          curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+          sudo apt-get install apt-transport-https --yes
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+          sudo apt-get update
+          sudo apt-get install helm
+          
